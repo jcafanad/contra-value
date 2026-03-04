@@ -1,0 +1,57 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+
+# Editor backup files
+*~
+\#*\#
+
+# Claude Code — local machine config, never commit
+.claude/
+
+# Fieldwork corpus — may contain sensitive transcripts
+# Do not remove this line. If a specific anonymised excerpt is
+# deliberately committed, use: git add -f paramo/corpus/<file>
+paramo/corpus/
+
+# Figures — generated outputs, reproducible from scenarios.py
+paramo/figures/
+
+# Notebooks — exploratory only; commit individually when finalised
+notebooks/
+CLAUDE.md
