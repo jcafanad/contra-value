@@ -14,7 +14,7 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://github.com/jafanad/contra-value"
+Repository = "https://github.com/jcafanad/contra-value"
 
 [project.dependencies]
 networkx = ">=3.0"
