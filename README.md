@@ -26,4 +26,6 @@ Guantiva-La Rusia Páramo complex.
 
 ## License
 
-GPL-3.0-or-later
+The source code is released under the [GNU General Public Licence v3 or later](https://www.gnu.org/licenses/gpl-3.0.html).
+
+The paper *Contra the Value of the Colombian Páramo* (`docs/`) is the current version; an earlier draft appears on arXiv. It is licensed under [Creative Commons Attribution–NonCommercial–ShareAlike 4.0 International](https://creativecommons.org/licenses/by-nc-sa/4.0/). You may share and adapt it for non-commercial purposes, provided you give attribution and distribute any derivatives under the same terms.
