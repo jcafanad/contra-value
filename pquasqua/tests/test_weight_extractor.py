@@ -3,7 +3,7 @@ Tests for BETOWeightExtractor.
 
 Unit tests use a mocked BETO (uniform logits) — no network required.
 The empirical baseline (real BETO, 2026-03-18) is documented in
-docs/CONFIG_ANALYSIS.md and in _compute_pseudo_perplexity's docstring.
+internal/CONFIG_ANALYSIS.md and in _compute_pseudo_perplexity's docstring.
 
 Empirical test (BETO_EMPIRICAL=1): multi-speaker topology with 4 speakers
 drawn from actual corpus claims, cross-speaker attacks wired, λ_⊥ reported
@@ -253,4 +253,4 @@ class TestMultiSpeakerTopology:
             print(f"{a.id:<4} {a.speaker:<12} {a.perplexity:>7.3f}  "
                   f"{str(a.L_dia):<25} {str(a.L_val):<15} {', '.join(flags)}")
         print(f"\nAutomatic subject atom (A3): λ_⊥ = {next(a for a in atoms if a.id==3).perplexity:.3f}")
-        print("Record notable findings in docs/CONFIG_ANALYSIS.md.")
+        print("Record notable findings in internal/CONFIG_ANALYSIS.md.")

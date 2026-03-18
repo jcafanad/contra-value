@@ -13,8 +13,9 @@ Variables:
     w: improved living conditions
 """
 
-from chuaque.formulas import Atom, Implication, Negation, Formula, atoms
-from typing import Set
+from chuaque.formulas import Atom, Implication, Negation, Conjunction, Formula, atoms
+from cubun.ddg import MoveType, MoveContext
+from typing import List, Set, Tuple
 
 
 # the sentential variables of the Páramo
@@ -55,3 +56,67 @@ def kb1() -> Set[Formula]:
         Implication(s, y),                  # s → y
         Implication(h, s),                  # h → s
     }
+
+
+class ParamoKnowledgeBase:
+    """
+    DDG knowledge base for the Guantiva-La Rusia Páramo.
+
+    Implements the two game-rule methods required by DDGEngine:
+
+        legal_attacks(formula)          → admissible attack moves
+        legal_defences(formula, context) → admissible defence moves
+
+    "Legal" in the sense of Hamblin (1970, Fallacies, Methuen) and
+    Prakken (2006, "Formal systems for persuasion dialogue",
+    Knowledge Engineering Review 21:2, 163–188): a move is legal if
+    the game rules admit it at the current position. Not every
+    syntactically expressible move is legal — structural attacks on an
+    implication are inapplicable to a conjunction, and so on.
+
+    Structural rules (Conjunction, Implication) are formula-generic.
+    The single domain rule (Atom "a") encodes the KB0 counter-claim
+    r → ¬a: the State can always assert ¬a to challenge agricultural
+    land-use. This is the minimal domain knowledge required to run
+    examples 5.1 and 5.2.
+    """
+
+    def legal_attacks(
+        self, formula: Formula
+    ) -> List[Tuple[MoveType, Formula, MoveContext]]:
+        if isinstance(formula, Conjunction):
+            return [
+                (MoveType.REQUEST, formula.left,
+                 MoveContext(structural_target="left_conjunct")),
+                (MoveType.REQUEST, formula.right,
+                 MoveContext(structural_target="right_conjunct")),
+            ]
+        if isinstance(formula, Implication):
+            return [
+                (MoveType.REQUEST, formula.antecedent,
+                 MoveContext(structural_target="antecedent")),
+                (MoveType.ASSERT, Negation(formula.consequent),
+                 MoveContext(structural_target="consequent")),
+            ]
+        if isinstance(formula, Atom) and formula == a:
+            # KB0 domain counter-claim: r → ¬a entails ¬a given r.
+            return [(MoveType.ASSERT, Negation(a), MoveContext())]
+        return []
+
+    def legal_defences(
+        self, formula: Formula, context: MoveContext
+    ) -> List[Tuple[MoveType, Formula]]:
+        target = context.structural_target
+        if target is None:
+            return []
+        if isinstance(formula, Conjunction):
+            if target == "left_conjunct":
+                return [(MoveType.ASSERT, formula.left)]
+            if target == "right_conjunct":
+                return [(MoveType.ASSERT, formula.right)]
+        if isinstance(formula, Implication):
+            if target == "antecedent":
+                return [(MoveType.ASSERT, formula.antecedent)]
+            if target == "consequent":
+                return [(MoveType.ASSERT, formula.consequent)]
+        return []

@@ -229,7 +229,7 @@ class TestBETOPerplexityEmpirical:
     Requires: network access, ~500MB BETO download, torch.
     Run with: BETO_EMPIRICAL=1 pytest pquasqua/tests/test_beto_perplexity.py
 
-    Results should be documented in docs/CONFIG_ANALYSIS.md.
+    Results should be documented in internal/CONFIG_ANALYSIS.md.
     """
 
     @pytest.fixture(scope="class")
@@ -294,7 +294,7 @@ class TestBETOPerplexityEmpirical:
         else:
             print("INTERPRETATION: No significant gap — language mismatch is not inflating λ_⊥.")
 
-        print("Record these results in docs/CONFIG_ANALYSIS.md.")
+        print("Record these results in internal/CONFIG_ANALYSIS.md.")
 
     def test_extended_paramuno_samples(self, beto):
         """
