@@ -256,8 +256,8 @@ class TestDimensionPredicates:
 # ---------------------------------------------------------------------------
 
 class TestTauInception:
-    # Offsets:  Nolberto=[9:17]  valor=[18:23]  no=[24:26]  es=[27:29]  conn=[30:34]
-    TEXT = "hago eco Nolberto valor no es conn"
+    # Offsets:  Speaker NP=[9:19]  valor=[20:25]  no=[26:28]  es=[29:31]  conn=[32:36]
+    TEXT = "hago eco Speaker NP valor no es conn"
 
     def _span(self, begin, end, dia=None, ont=None, val=None):
         return InceptionSpan(
@@ -268,14 +268,14 @@ class TestTauInception:
         )
 
     def test_produces_atom_for_value_span(self):
-        span = self._span(18, 23, val=["value"])
+        span = self._span(20, 25, val=["value"])
         atom = tau_inception(span, self.TEXT, "Speaker GR", 1, 0)
         assert atom is not None
         assert atom.claim == "valor"
         assert "value" in atom.L_val
 
     def test_produces_atom_for_negation_span(self):
-        span = self._span(24, 26, dia=["negation", "ligature"])
+        span = self._span(26, 28, dia=["negation", "ligature"])
         atom = tau_inception(span, self.TEXT, "Speaker GR", 1, 1)
         assert atom is not None
         assert "negation" in atom.L_dia
@@ -283,25 +283,25 @@ class TestTauInception:
 
     def test_filters_pure_ligature_structural_marker(self):
         """Pure ligature-only in L_dia with no other dimensions → None."""
-        span = self._span(30, 34, dia=["ligature"])
+        span = self._span(32, 36, dia=["ligature"])
         atom = tau_inception(span, self.TEXT, "Speaker GR", 1, 2)
         assert atom is None
 
     def test_filters_pure_person_metadata(self):
         """Only 'person' in L_ont, empty L_dia and L_val → None."""
-        span = self._span(9, 17, ont=["person"])
+        span = self._span(9, 19, ont=["person"])
         atom = tau_inception(span, self.TEXT, "Speaker GR", 1, 3)
         assert atom is None
 
     def test_preserves_ligature_when_cooccurs_with_negation(self):
         """ligature+negation co-occurrence must NOT be filtered."""
-        span = self._span(24, 26, dia=["negation", "ligature"])
+        span = self._span(26, 28, dia=["negation", "ligature"])
         atom = tau_inception(span, self.TEXT, "Speaker GR", 1, 4)
         assert atom is not None
 
     def test_preserves_person_when_cooccurs_with_value(self):
         """person+value co-occurrence must NOT be filtered — it's meaningful."""
-        span = self._span(9, 17, ont=["person"], val=["value"])
+        span = self._span(9, 19, ont=["person"], val=["value"])
         atom = tau_inception(span, self.TEXT, "Speaker GR", 1, 5)
         assert atom is not None
 
@@ -311,15 +311,15 @@ class TestTauInception:
         assert atom is None
 
     def test_speaker_and_turn_assigned(self):
-        span = self._span(18, 23, val=["value"])
+        span = self._span(20, 25, val=["value"])
         atom = tau_inception(span, self.TEXT, "Speaker GR", 7, 10)
         assert atom.speaker == "Speaker GR"
         assert atom.turn == 7
 
     def test_span_indices_preserved(self):
-        span = self._span(18, 23, val=["value"])
+        span = self._span(20, 25, val=["value"])
         atom = tau_inception(span, self.TEXT, "Speaker GR", 1, 0)
-        assert atom.span_indices == (18, 23)
+        assert atom.span_indices == (20, 25)
 
 
 # ---------------------------------------------------------------------------
