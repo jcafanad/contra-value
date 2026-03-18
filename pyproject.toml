@@ -12,22 +12,26 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Programming Language :: Python :: 3",
 ]
+dependencies = [
+    "networkx>=3.0",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "matplotlib>=3.7",
+    "transformers>=4.30",
+    "torch>=2.0",
+    "scipy>=1.10",
+]
 
 [project.urls]
 Repository = "https://github.com/jcafanad/contra-value"
 
-[project.dependencies]
-networkx = ">=3.0"
-numpy = ">=1.24"
-pandas = ">=2.0"
-matplotlib = ">=3.7"
-transformers = ">=4.30"
-torch = ">=2.0"
-scipy = ">=1.10"
-
 [project.optional-dependencies]
 notebooks = ["jupyter>=1.0"]
 dev = ["pytest>=7.0", "pytest-cov>=4.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["chuaque*", "cubun*", "pquasqua*", "iaia*", "sybyn*", "paramo*"]
 
 [build-system]
 requires = ["setuptools>=68.0"]
