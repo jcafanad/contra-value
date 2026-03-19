@@ -60,9 +60,9 @@ CYCLE DETECTION — COMPLEXITY AND GUARANTEES:
 
     For the fieldwork use case (n ≤ 10), the difference is 6 vs 12 orders of magnitude.
 
-TWO-ROUND ERASURE (Violence of Ignorance → Violence of Certified Truth):
+TWO-ROUND ERASURE (Erasure by Ignorance → Certified Erasure):
 
-    ROUND 1 — Violence of Ignorance (Fact A: N ⊕_t I = T):
+    ROUND 1 — Erasure by Ignorance (Fact A: N ⊕_t I = T):
         B = N (not yet evaluated). A1's partner A2 = I (seeded).
         attack_value(A1) = F ⊕_t N ⊕_t I = N ⊕_t I = T.
         new_label(A1) = ∼(T) = F.
@@ -70,7 +70,7 @@ TWO-ROUND ERASURE (Violence of Ignorance → Violence of Certified Truth):
         The incomparable pair (N, I) is forcibly resolved to T by the
         instrumental truth-join: hallucinated certainty synthesised from ignorance.
 
-    ROUND 2+ — Violence of Certified Truth (Fact B: T ⊕_t I = T):
+    ROUND 2+ — Certified Erasure (Fact B: T ⊕_t I = T):
         B = T (unattacked, converged). A1 is kept at F by certified dominance.
         The mechanism has shifted; the output (F) is identical.
 
@@ -662,13 +662,13 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------
     # Test 4: Two-Round Erasure (Survivorship Collapse)
     # This test is the executable proof of the docstring's central claim.
-    # Without it, the Violence of Ignorance / Violence of Certified Truth
-    # distinction is asserted but not demonstrated.
+    # Without it, the Erasure by Ignorance / Certified Erasure distinction
+    # is asserted but not demonstrated.
     #
     # B attacks A1; A1↔A2 dialetheic bond.
     # Round 0: A1=I, A2=I, B=N.
-    # Round 1: B=T; A1 erased by Violence of Ignorance (B=N, N⊕I=T → F); A2=I.
-    # Round 2: B=T; A1 kept at F by Violence of Certified Truth (T⊕I=T → F);
+    # Round 1: B=T; A1 erased by Erasure by Ignorance (B=N, N⊕I=T → F); A2=I.
+    # Round 2: B=T; A1 kept at F by Certified Erasure (T⊕I=T → F);
     #          A2=∼(F⊕F)=T — survivorship collapse.
     # Fixed point: A1=F, A2=T, B=T.
     # -----------------------------------------------------------------------
@@ -688,8 +688,8 @@ if __name__ == "__main__":
             DynamicVAFGenerator([a1, a2, b_state]).generate_framework(two_round)
         ).evaluate()
     )
-    print("  Round 1: A1 erased by Violence of Ignorance (B was N; N⊕_t I=T).")
-    print("  Round 2: A1 kept at F by Violence of Certified Truth (B now T; T⊕_t I=T).")
+    print("  Round 1: A1 erased by Erasure by Ignorance (B was N; N⊕_t I=T).")
+    print("  Round 2: A1 kept at F by Certified Erasure (B now T; T⊕_t I=T).")
     print("  A2: I → T. The survivor is instrumentally recruited into bivalence.")
 
     # -----------------------------------------------------------------------

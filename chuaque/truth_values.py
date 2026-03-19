@@ -8,7 +8,7 @@ Implements the four-valued logic required for paraconsistent argumentation.
 
 TWO CRITICAL ALGEBRAIC FACTS — distinct in mechanism, convergent in consequence:
 
-    FACT A. N ⊕_t I = T   (The Violence of Ignorance)
+    FACT A. N ⊕_t I = T   (Erasure by Ignorance)
         N (Neither / no information) and I (Both / lived contradiction) are
         incomparable under ≤_t. Their least upper bound under ≤_t is T,
         the unique element strictly above both.
@@ -42,14 +42,14 @@ TWO CRITICAL ALGEBRAIC FACTS — distinct in mechanism, convergent in consequenc
         the fixed point. Ignorance enacts transient erasure; it cannot
         sustain permanent erasure without a genuine T behind it.
 
-        IMPLEMENTATION DEPENDENCY: The Violence of Ignorance is activated
-        by the design decision in pvaf.py to inject the CONSTANT TruthValue.I
+        IMPLEMENTATION DEPENDENCY: Erasure by Ignorance is activated by
+        the design decision in pvaf.py to inject the CONSTANT TruthValue.I
         from dialetheic partners, rather than their current label. If partners
         injected their current label (N in Round 0), attack_value would be
         F ⊕_t N ⊕_t N = N, ∼(N) = N — no erasure. The political meaning
         of Fact A is inseparable from this implementation choice.
 
-    FACT B. T ⊕_t I = T   (The Violence of Certified Truth)
+    FACT B. T ⊕_t I = T   (Certified Erasure)
         The State's certified truth (T) absorbs the subaltern's lived
         contradiction (I) under the truth-lattice join. T is the absorbing
         element of ⊕_t. Negating: ∼(T) = F.
@@ -61,25 +61,23 @@ TWO CRITICAL ALGEBRAIC FACTS — distinct in mechanism, convergent in consequenc
         the subaltern's contradiction is erased without possibility of
         recovery under this evaluation framework.
 
-        This is the computational formalisation of certified colonial
-        violence: the State that knows its dominant logic and uses it.
+        This is the computational formalisation of a State that knows its
+        dominant logic and deploys it.
 
     THE DISTINCTION BETWEEN A AND B:
 
-        Fact A — Violence of Ignorance:    provisional, self-correcting,
+        Fact A — Erasure by Ignorance:  provisional, self-correcting,
             activated by the constant-I partner injection design,
             a property of the iteration's transient states.
 
-        Fact B — Violence of Certified Truth: permanent, non-recoverable,
+        Fact B — Certified Erasure:     permanent, non-recoverable,
             a property of the fixed point itself.
 
-        Both are violent. They are not equivalent. Fact A is the
-        instrument of a State that does not yet know — but whose
-        institutional machinery erases before it learns. Fact B is the
-        instrument of a State that knows and acts. The first is the
-        violence of bureaucratic indifference; the second is the violence
-        of deliberate domination. In symbolic AI, arithmetic is ontology:
-        both are encoded in the same four-element lattice.
+        They are not equivalent. Fact A is the instrument of a State that
+        does not yet know — but whose institutional machinery erases before
+        it learns. Fact B is the instrument of a State that knows and acts.
+        In symbolic AI, arithmetic is ontology: both are encoded in the
+        same four-element lattice.
 """
 
 from __future__ import annotations
@@ -318,22 +316,22 @@ def _verify_bilattice_axioms() -> None:
         assert N.join_k(x) == x, f"join_k identity failed: N ⊕_k {x} ≠ {x}"
         assert I.join_k(x) == I, f"join_k absorption failed: I ⊕_k {x} ≠ I"
 
-    # FACT A — Violence of Ignorance (provisional erasure under N ⊕_t I = T)
+    # FACT A — Erasure by Ignorance (provisional erasure under N ⊕_t I = T)
     # N and I are ≤_t-incomparable; their lub is T. Politically non-neutral:
     # the State's ignorance (N), forced to interact with the subaltern's
     # contradiction (I) by the instrumental truth-join, synthesises a
     # hallucinated T that enacts transient erasure. Self-correcting under
     # iteration if B has no genuine T warrant. See module docstring.
     assert N.join_t(I) == T, \
-        "Violence of Ignorance lemma failed: N ⊕_t I ≠ T"
+        "Erasure by Ignorance lemma failed: N ⊕_t I ≠ T"
 
-    # FACT B — Violence of Certified Truth (permanent erasure under T ⊕_t I = T)
+    # FACT B — Certified Erasure (permanent erasure under T ⊕_t I = T)
     # T is the absorbing element of ⊕_t. A genuine T-labelled attacker
     # permanently erases the subaltern contradiction at the fixed point.
     assert T.join_t(I) == T, \
-        "Violence of Certified Truth lemma failed: T ⊕_t I ≠ T"
+        "Certified Erasure lemma failed: T ⊕_t I ≠ T"
     assert T.join_t(I).negation == F, \
-        "Certified erasure consequence failed: ∼(T ⊕_t I) ≠ F"
+        "Certified Erasure consequence failed: ∼(T ⊕_t I) ≠ F"
 
     # Classifier paraconsistency: F ⊕_k T = I
     assert F.join_k(T) == I, \
