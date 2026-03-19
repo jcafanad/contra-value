@@ -57,11 +57,13 @@ alpha: blend weight (1.0 = pure theory; decrements per label as corpus grows).
 
 Open questions
 
-  TODO 2 — Corpus-derived prototypes
-      Populate ValueNetNode.corpus_prototypes from atoms already tagged with
-      each L_val label in the INCEPTION corpus. Decrement alpha per label
-      as prototype pools grow. The theory hypothesis remains as scaffold and
-      is never fully replaced — it is calibrated by the corpus material.
+  TODO 2 — DONE (populate_corpus_prototypes)
+      Parses annotation/*/admin.zip files under a corpus directory. Extracts
+      text spans tagged with each L_val label, samples up to
+      max_prototypes_per_label per label, and sets alpha using:
+          alpha = max(alpha_floor, 1 - n / (n + half_life))
+      where n is the full corpus count (not the sample). alpha_floor=0.3
+      ensures the theory hypothesis is never fully replaced.
 
   TODO 3 — DONE (Option C — per-round weight injection)
       ParaconsistentAFSolver now accepts weights: Dict[SituatedArgument, float]
@@ -73,10 +75,20 @@ Open questions
 """
 
 import math
+import os
+import random
+import xml.etree.ElementTree as ET
+import zipfile
+from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from pquasqua.transducer import Atom
+
+# XMI namespace constants — mirror transducer.py (duplicated to keep this
+# module self-contained; do not import from transducer to avoid coupling).
+_CUSTOM_NS = "http:///webanno/custom.ecore"
+_CAS_NS    = "http:///uima/cas.ecore"
 
 # torch and transformers are optional — same guard as transducer.py.
 try:
@@ -103,11 +115,14 @@ class ValueNetNode:
 
     theory_hypothesis: NLI hypothesis encoding the totalising identity
         gesture specific to this real abstraction. Provisional scaffold —
-        to be calibrated by corpus_prototypes (TODO 2).
+        calibrated by corpus_prototypes.
     corpus_prototypes: actual claims from corpus atoms tagged with this
-        label. Populated by TODO 2. Empty list = pure theory (alpha=1.0).
+        label. Populated by populate_corpus_prototypes(). Empty list =
+        pure theory (alpha=1.0).
     alpha: blend weight between theory and corpus (1.0 = pure theory).
-        Decremented per label as the corpus prototype pool grows.
+        Set by populate_corpus_prototypes() based on full corpus pool size.
+        alpha_floor (default 0.3) prevents full replacement of the theory
+        hypothesis — the theory scaffold is never discarded, only calibrated.
     """
     label:             str
     theory_hypothesis: str
@@ -145,6 +160,111 @@ VALUE_NET: Dict[str, ValueNetNode] = {
         ),
     ),
 }
+
+
+# =============================================================================
+# Corpus prototype population — TODO 2
+# =============================================================================
+
+def populate_corpus_prototypes(
+    corpus_dir: str,
+    value_net: Dict[str, "ValueNetNode"] = None,
+    alpha_floor: float = 0.3,
+    half_life: int = 50,
+    max_prototypes_per_label: int = 20,
+    seed: int = 42,
+) -> Dict[str, int]:
+    """
+    Populate ValueNetNode.corpus_prototypes from INCEPTION annotation XMI files
+    and update alpha per label.
+
+    Parses annotation/*/admin.zip files under corpus_dir. For each
+    custom:Categories span carrying a <value> child element whose text matches
+    a VALUE_NET key, the text span (text[begin:end]) is collected as a prototype.
+
+    Alpha decrement schedule
+    ------------------------
+    alpha reflects the size of the FULL corpus pool (before sampling), so that
+    labels with more annotated evidence are calibrated more strongly toward the
+    corpus. The sampled prototype pool (max_prototypes_per_label) controls
+    computational cost at inference time but does not affect alpha.
+
+        alpha = max(alpha_floor, 1 - n / (n + half_life))
+
+    With alpha_floor=0.3, half_life=50 and observed corpus counts:
+        value  (n=207): alpha = 0.30  (floor — large pool, trust corpus)
+        nature (n=35):  alpha = 0.59
+        labour (n=30):  alpha = 0.63
+        gender (n=14):  alpha = 0.78  (small pool, stay close to theory)
+
+    The alpha_floor (default 0.3) ensures the theory hypothesis is never fully
+    replaced — it remains as scaffold and anchor even when the corpus is large.
+
+    Parameters
+    ----------
+    corpus_dir             : path to the INCEPTION project export root
+                             (contains annotation/ subdirectory)
+    value_net              : VALUE_NET dict to update in place; defaults to the
+                             module-level VALUE_NET
+    alpha_floor            : minimum alpha (theory floor); default 0.3
+    half_life              : full corpus n at which alpha = (1 + alpha_floor)/2;
+                             default 50
+    max_prototypes_per_label: maximum prototypes stored per label (random sample
+                             from full pool); default 20
+    seed                   : random seed for reproducible sampling; default 42
+
+    Returns
+    -------
+    Dict[str, int] : {label: full_corpus_count} for logging and tests.
+    """
+    if value_net is None:
+        value_net = VALUE_NET
+
+    rng = random.Random(seed)
+    all_claims: Dict[str, List[str]] = defaultdict(list)
+
+    annotation_dir = os.path.join(corpus_dir, "annotation")
+    for speaker_dir in sorted(os.listdir(annotation_dir)):
+        zip_path = os.path.join(annotation_dir, speaker_dir, "admin.zip")
+        if not os.path.exists(zip_path):
+            continue
+
+        with zipfile.ZipFile(zip_path) as zf:
+            xmi_bytes = zf.read(zf.namelist()[0])
+
+        root = ET.fromstring(xmi_bytes)
+
+        sofa = root.find(f"{{{_CAS_NS}}}Sofa")
+        if sofa is None:
+            continue
+        text = sofa.get("sofaString", "")
+
+        for cat in root.findall(f"{{{_CUSTOM_NS}}}Categories"):
+            value_labels = [el.text for el in cat.findall("value") if el.text]
+            if not value_labels:
+                continue
+            begin = int(cat.get("begin", 0))
+            end   = int(cat.get("end",   0))
+            claim = text[begin:end].strip()
+            if not claim:
+                continue
+            for label in value_labels:
+                if label in value_net:
+                    all_claims[label].append(claim)
+
+    full_counts: Dict[str, int] = {}
+    for label, claims in all_claims.items():
+        node = value_net[label]
+        full_n = len(claims)
+        full_counts[label] = full_n
+        # Sample for computational efficiency at inference time
+        if full_n > max_prototypes_per_label:
+            claims = rng.sample(claims, max_prototypes_per_label)
+        node.corpus_prototypes = claims
+        # Alpha based on full corpus evidence, not sample size
+        node.alpha = max(alpha_floor, 1.0 - full_n / (full_n + half_life))
+
+    return full_counts
 
 
 # =============================================================================
