@@ -430,15 +430,55 @@ class ParaconsistentAFSolver:
     INJECTION SEMANTICS:
         ONTOLOGICAL SEEDING: Dialetheic arguments start at I in Round 0.
         INFERENTIAL INJECTION: Partners inject their current material label.
+        WEIGHT INJECTION (Option C): At each round, arguments with weight ≥
+            weight_threshold inject TruthValue.I into their own attack_value
+            before the negation step. This encodes per-round self-assertion:
+            an argument deeply engaged with a real abstraction (high weight)
+            keeps inserting itself into the dialectic.
 
-    UPDATE FUNCTION:
+    WEIGHT INJECTION — UPDATE FUNCTION:
         attack_value(a) = ⊕_t { x.join_t() : x ∈ attackers(a) ∪ partners(a) }
-        new_label(a)    = attack_value(a).negation
+        if weight(a) ≥ θ:
+            attack_value(a) = attack_value(a) ⊕_t I
+        new_label(a) = attack_value(a).negation
+
+    WEIGHT INJECTION — POLITICAL CONSEQUENCES:
+        When attack_value = F (no influencers): F ⊕_t I = I → ∼I = I.
+            Resists the Bivalent Ghost: the high-weight arg refuses the
+            uncontested default (T) and stays in contradiction.
+        When attack_value = N (ignorant attacker): N ⊕_t I = T → ∼T = F.
+            The injection paradoxically activates Erasure by Ignorance
+            against itself. The self-assertion cannot be disentangled from
+            the latent T that the truth-join forces on N ⊕_t I.
+        When attack_value = T (certified attacker): T ⊕_t I = T → ∼T = F.
+            Certified State truth still erases. Weight-based self-injection
+            provides no protection against a genuinely T-labelled attacker.
+        When attack_value = I: I ⊕_t I = I → ∼I = I.
+            Stable. The bond and the self-assertion reinforce each other.
+
+        The recovery path (see test_weight_injection_bond_sustained_coalitional)
+        is indirect: the injection prevents allied high-weight arguments from
+        being absorbed into the Bivalent Ghost (F→I instead of F→T). This
+        propagates through the network until the bond's attacker transitions
+        from N/T to I, at which point the erased bond partner recovers to I.
+
+        This reflects the social dynamic: contra-value gestures do not
+        immediately protect against State intervention but create conditions
+        under which the bond re-emerges through solidaristic argumentation.
+
+    weights: Dict[SituatedArgument, float]
+        Per-argument engagement weights from BETOWeightExtractor.annotate().
+        Default: empty dict (no injection — backward compatible with all
+        existing scenarios, which pass no weights).
+    weight_threshold: float
+        Arguments with weight ≥ threshold receive the I-injection.
+        Default: 0.5.
 
     CONVERGENCE GUARANTEE:
         The bilattice has 4^n states. By Pigeonhole, the iteration terminates
         within 4^n + 1 rounds — either at a fixed point or a cycle.
         Both are detected exactly. Termination is mathematically guaranteed.
+        Weight injection does not affect the state space or the guarantee.
 
     COMPLEXITY:
         Per-round: O(n) for computing new_labels + O(n) for hashing the state.
@@ -456,8 +496,16 @@ class ParaconsistentAFSolver:
         in _state_key, not in the solver.
     """
 
-    def __init__(self, af: DynamicAF) -> None:
+    def __init__(
+        self,
+        af: DynamicAF,
+        weights: Optional[Dict[SituatedArgument, float]] = None,
+        weight_threshold: float = 0.5,
+    ) -> None:
         self.af = af
+        self.weights: Dict[SituatedArgument, float] = \
+            weights if weights is not None else {}
+        self.weight_threshold = weight_threshold
 
     def evaluate(self) -> Dict[SituatedArgument, TruthValue]:
         # ONTOLOGICAL SEEDING
@@ -495,6 +543,12 @@ class ParaconsistentAFSolver:
                 # INFERENTIAL INJECTION: partner's current material label.
                 for partner in self.af.partners_of(arg):
                     attack_value = attack_value.join_t(current_labels[partner])
+
+                # WEIGHT INJECTION (Option C): high-weight arguments inject I
+                # into their own attack_value at every round. See class docstring
+                # for the full political consequences of each case.
+                if self.weights.get(arg, 0.0) >= self.weight_threshold:
+                    attack_value = attack_value.join_t(TruthValue.I)
 
                 new_labels[arg] = attack_value.negation
 

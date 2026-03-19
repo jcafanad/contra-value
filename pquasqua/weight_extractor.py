@@ -63,12 +63,13 @@ Open questions
       as prototype pools grow. The theory hypothesis remains as scaffold and
       is never fully replaced — it is calibrated by the corpus material.
 
-  TODO 3 — Weight integration into the PVAF solver
-      Atom.weight will be passed to the PVAF (ParaconsistentAFSolver).
-      Design decisions in cubun/af.py: does weight modulate attack strength,
-      influence fixed-point initialisation, or bias the Knaster-Tarski
-      iteration? The solver currently ignores weights entirely. Weight
-      integration is a theoretical commitment, not a parameter tweak.
+  TODO 3 — DONE (Option C — per-round weight injection)
+      ParaconsistentAFSolver now accepts weights: Dict[SituatedArgument, float]
+      and weight_threshold: float = 0.5. At each round, arguments with
+      weight >= threshold inject I into their own attack_value before the
+      negation step. See cubun/af.py class docstring for full political
+      consequences and cubun/tests/test_af.py::TestWeightInjection for
+      the coalitional bond recovery exemplar.
 """
 
 import math
