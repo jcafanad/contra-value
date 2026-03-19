@@ -1,38 +1,79 @@
 """
 pquasqua/weight_extractor.py — per-atom BETO weight computation.
 
-Populates Atom.perplexity (λ_⊥) for each atom produced by τ transduction.
+Populates Atom.perplexity (λ_⊥) and Atom.weight for each atom produced
+by τ transduction.
+
+Atom.perplexity (λ_⊥)
+----------------------
+Pseudo-perplexity under the masked LM (dccuchile/bert-base-spanish-wwm-cased).
 High perplexity = BETO finds the atom's claim distributionally distant from
-its training corpus (Iberian/Chilean Spanish) = epistemic imposition signal.
+its training corpus (Iberian/Chilean Spanish) = measure of epistemic imposition.
+Do not recalibrate to reduce perplexity — the distortion is the signal.
 
-Atom.weight is left at 0.0 pending resolution of three open questions:
+Atom.weight — VALUE_NET engagement intensity
+---------------------------------------------
+Direction-neutral measure of how strongly an atom engages with the totalising
+identity gesture of its L_val real abstraction(s). Computed via NLI
+(Recognai/bert-base-spanish-wwm-cased-xnli):
 
-  TODO 1 — Semantic mapping, not taxonomy
-      The value dimension (L_val: value, labour, gender, nature) is not a
-      flat taxonomy but a semantic mapping — closer to a network of relations
-      between concepts than to a lookup table. The mapping structure needs
-      thinking through before any proximity score can be defined. Key question:
-      what does "distance to value" mean when value itself is what is being
-      contested?
+    weight = max over L_val(atom) of:
+        α · max(p_E, p_C) against theory_hypothesis
+      + (1-α) · mean_k max(p_E, p_C) against corpus_prototype_k
 
-  TODO 2 — Value descriptions from INCEPTION layers
-      If weight is to measure proximity to value concepts, the descriptions
-      used for comparison should not be hand-crafted external strings but
-      derived from the INCEPTION annotation layers themselves — from atoms
-      already tagged with specific L_val labels in the corpus. The corpus
-      speaks; the weight descriptions should listen to it. This connects
-      TODO 1 (what the mapping looks like) to the empirical material.
+max(p_E, p_C) is direction-neutral: high whether the atom performs the
+totalising identity gesture (high p_E) or contests it (high p_C). The
+audience determines performance vs. contestation; weight measures intensity.
+λ_⊥ is stored separately — it measures how reliably BETO can engage with
+the claim at all, which is a distinct question from engagement intensity.
+
+VALUE_NET — the value semantic net
+-----------------------------------
+Four real abstractions, each with a NLI hypothesis encoding its specific
+totalising identity gesture under capitalist ontologization:
+
+  value   — presents fetishistic social mediation as a property of things
+             or a neutral measure of social wealth
+  labour  — ontologises a civilisational canon of submission as the
+             universal paradigm of human creative activity, of world-making
+  gender  — structurally dissociates the feminine from the sphere of value
+             valorisation (the core of commodity-producing patriarchy)
+  nature  — positions nature as either passive resource or bearer of
+             intrinsic value; both modes deliver it to the value-form
+
+The categories are not parallel instances of a common form but real
+abstractions co-constituted within the socio-historical specificity of
+capitalist social relations. Their shared kernel is totalising identity:
+the drive to render the particular commensurable, the historical eternal.
+
+Symbiotic architecture (ValueNetNode)
+--------------------------------------
+theory_hypothesis: NLI hypothesis encoding the totalising identity gesture.
+    Currently hand-crafted from the critical framework; provisional scaffold.
+corpus_prototypes: actual claims from corpus atoms tagged with this label.
+    Populated in TODO 2 — corpus speaks; prototypes calibrate the theory.
+alpha: blend weight (1.0 = pure theory; decrements per label as corpus grows).
+    Symbiosis: theory sets direction; corpus pulls toward actual distribution.
+
+Open questions
+
+  TODO 2 — Corpus-derived prototypes
+      Populate ValueNetNode.corpus_prototypes from atoms already tagged with
+      each L_val label in the INCEPTION corpus. Decrement alpha per label
+      as prototype pools grow. The theory hypothesis remains as scaffold and
+      is never fully replaced — it is calibrated by the corpus material.
 
   TODO 3 — Weight integration into the PVAF solver
       Atom.weight will be passed to the PVAF (ParaconsistentAFSolver).
-      This requires design decisions in cubun/af.py: does weight modulate
-      attack strength, influence fixed-point initialisation, or bias the
-      Knaster-Tarski iteration? The solver currently ignores weights entirely.
-      Weight integration is a theoretical commitment, not a parameter tweak.
+      Design decisions in cubun/af.py: does weight modulate attack strength,
+      influence fixed-point initialisation, or bias the Knaster-Tarski
+      iteration? The solver currently ignores weights entirely. Weight
+      integration is a theoretical commitment, not a parameter tweak.
 """
 
 import math
-from typing import List, Optional
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
 from pquasqua.transducer import Atom
 
@@ -40,11 +81,74 @@ from pquasqua.transducer import Atom
 try:
     import torch
     import numpy as np
-    from transformers import AutoTokenizer, AutoModelForMaskedLM
+    from transformers import (
+        AutoTokenizer,
+        AutoModelForMaskedLM,
+        AutoModelForSequenceClassification,
+    )
     _TORCH_AVAILABLE = True
 except ImportError:
     _TORCH_AVAILABLE = False
 
+
+# =============================================================================
+# Value semantic net
+# =============================================================================
+
+@dataclass
+class ValueNetNode:
+    """
+    A node in the value semantic net.
+
+    theory_hypothesis: NLI hypothesis encoding the totalising identity
+        gesture specific to this real abstraction. Provisional scaffold —
+        to be calibrated by corpus_prototypes (TODO 2).
+    corpus_prototypes: actual claims from corpus atoms tagged with this
+        label. Populated by TODO 2. Empty list = pure theory (alpha=1.0).
+    alpha: blend weight between theory and corpus (1.0 = pure theory).
+        Decremented per label as the corpus prototype pool grows.
+    """
+    label:             str
+    theory_hypothesis: str
+    corpus_prototypes: List[str] = field(default_factory=list)
+    alpha:             float     = 1.0
+
+
+VALUE_NET: Dict[str, ValueNetNode] = {
+    "value": ValueNetNode(
+        label="value",
+        theory_hypothesis=(
+            "el valor es una propiedad de las cosas"
+            " o una medida de la riqueza social"
+        ),
+    ),
+    "labour": ValueNetNode(
+        label="labour",
+        theory_hypothesis=(
+            "el trabajo es la esencia universal"
+            " de la actividad creadora humana"
+        ),
+    ),
+    "gender": ValueNetNode(
+        label="gender",
+        theory_hypothesis=(
+            "lo femenino pertenece a una esfera separada"
+            " de la producción y acumulación de valor"
+        ),
+    ),
+    "nature": ValueNetNode(
+        label="nature",
+        theory_hypothesis=(
+            "la naturaleza es un recurso disponible"
+            " o una portadora de valor en sí misma"
+        ),
+    ),
+}
+
+
+# =============================================================================
+# Core computation functions
+# =============================================================================
 
 def _compute_pseudo_perplexity(
     text: str,
@@ -60,7 +164,7 @@ def _compute_pseudo_perplexity(
     High pseudo-perplexity = BETO finds the text linguistically distant
     from its training distribution (Iberian/Chilean Spanish).
 
-    This is λ_⊥: the epistemic imposition coefficient. Elevated values
+    This is λ_⊥: the measure of epistemic imposition. Elevated values
     mark atoms where BETO's colonial baggage distorts the discourse signal.
     Do not recalibrate to reduce perplexity — the distortion is the signal.
 
@@ -89,22 +193,101 @@ def _compute_pseudo_perplexity(
     return float(np.exp(-np.mean(log_probs)))
 
 
+def _nli_engagement(
+    claim: str,
+    hypothesis: str,
+    model,
+    tokenizer,
+) -> float:
+    """
+    Direction-neutral NLI engagement score: max(p_entailment, p_contradiction).
+
+    Measures how strongly the claim engages with the totalising identity
+    gesture encoded in the hypothesis, regardless of whether it performs
+    the gesture (high p_E) or contests it (high p_C). The audience
+    determines direction; this score measures intensity only.
+
+    XNLI label order for Recognai/bert-base-spanish-wwm-cased-xnli:
+        index 0 = contradiction, index 1 = neutral, index 2 = entailment
+    """
+    encoding = tokenizer(
+        claim, hypothesis,
+        return_tensors="pt", truncation=True, max_length=512,
+    )
+    with torch.no_grad():
+        logits = model(**encoding).logits
+    probs = torch.softmax(logits[0], dim=0)
+    p_contradiction = probs[0].item()
+    p_entailment    = probs[2].item()
+    return max(p_entailment, p_contradiction)
+
+
+def _compute_atom_weight(
+    atom: Atom,
+    nli_model,
+    nli_tokenizer,
+    value_net: Dict[str, ValueNetNode] = VALUE_NET,
+) -> float:
+    """
+    Atom.weight = max over L_val(atom) of the per-label engagement score.
+
+    Per-label score:
+        alpha * nli_engagement(claim, theory_hypothesis)
+      + (1-alpha) * mean_k nli_engagement(claim, corpus_prototype_k)
+
+    Atoms with no L_val labels or empty claims return 0.0.
+    Labels not present in value_net are silently skipped.
+    """
+    if not atom.claim.strip() or not atom.L_val:
+        return 0.0
+
+    scores = []
+    for label in atom.L_val:
+        node = value_net.get(label)
+        if node is None:
+            continue
+
+        theory_score = _nli_engagement(
+            atom.claim, node.theory_hypothesis, nli_model, nli_tokenizer
+        )
+
+        if node.corpus_prototypes:
+            corpus_scores = [
+                _nli_engagement(atom.claim, p, nli_model, nli_tokenizer)
+                for p in node.corpus_prototypes
+            ]
+            corpus_score = sum(corpus_scores) / len(corpus_scores)
+            score = node.alpha * theory_score + (1 - node.alpha) * corpus_score
+        else:
+            score = theory_score
+
+        scores.append(score)
+
+    return max(scores) if scores else 0.0
+
+
+# =============================================================================
+# Extractor
+# =============================================================================
+
 class BETOWeightExtractor:
     """
-    Populates Atom.perplexity (λ_⊥) for a list of atoms.
+    Populates Atom.perplexity (λ_⊥) and Atom.weight for a list of atoms.
 
-    Loads BETO once and computes pseudo-perplexity for each atom's claim.
-    Atom.weight is left at 0.0 — see module docstring TODOs 1–3.
+    Loads two BETO models:
+        model_id     — masked LM for pseudo-perplexity (λ_⊥)
+        nli_model_id — NLI classifier for VALUE_NET engagement weight
 
     Usage:
         extractor = BETOWeightExtractor()
         extractor.annotate(atoms)
-        # atoms[i].perplexity is now populated
+        # atoms[i].perplexity and atoms[i].weight are now populated
     """
 
     def __init__(
         self,
-        model_id: str = "dccuchile/bert-base-spanish-wwm-cased",
+        model_id:     str = "dccuchile/bert-base-spanish-wwm-cased",
+        nli_model_id: str = "Recognai/bert-base-spanish-wwm-cased-xnli",
     ) -> None:
         if not _TORCH_AVAILABLE:
             raise ImportError(
@@ -115,20 +298,26 @@ class BETOWeightExtractor:
         self.model = AutoModelForMaskedLM.from_pretrained(model_id)
         self.model.eval()
 
+        self.nli_tokenizer = AutoTokenizer.from_pretrained(nli_model_id)
+        self.nli_model = AutoModelForSequenceClassification.from_pretrained(nli_model_id)
+        self.nli_model.eval()
+
     def perplexity(self, text: str) -> float:
         """Compute λ_⊥ for a single text string."""
         return _compute_pseudo_perplexity(text, self.model, self.tokenizer)
 
     def annotate(self, atoms: List[Atom]) -> None:
         """
-        Populate Atom.perplexity for each atom in place.
+        Populate Atom.perplexity and Atom.weight for each atom in place.
 
-        Atoms with empty claims are skipped (perplexity left at 0.0).
-        Atom.weight is left at 0.0 — see module docstring TODOs 1–3.
+        Atoms with empty claims are skipped (both values left at 0.0).
         """
         for atom in atoms:
             if not atom.claim.strip():
                 continue
             atom.perplexity = _compute_pseudo_perplexity(
                 atom.claim, self.model, self.tokenizer
+            )
+            atom.weight = _compute_atom_weight(
+                atom, self.nli_model, self.nli_tokenizer
             )
