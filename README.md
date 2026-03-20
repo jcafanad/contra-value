@@ -16,6 +16,10 @@ Guantiva-La Rusia Páramo complex.
 - **`sybyn/`** — Categorical structures. The categorification of argumentation semantics through prisms. Forward-looking.
 - **`paramo/`** — The situated application. The Guantiva-La Rusia Páramo complex in Colombia.
 
+## Corpus
+
+The `pquasqua` transducer is grounded in an anonymised corpus of fieldwork transcripts from the Guantiva-La Rusia Páramo complex (2019–2020). Corpus fixtures are withheld from the public repository pending informed consent from community participants. They can be made available to researchers upon request.
+
 ## References
 
 - Afanador, J. (2019). Arguing Ecosystem Values with Paraconsistent Logics. arXiv:1911.06367.
