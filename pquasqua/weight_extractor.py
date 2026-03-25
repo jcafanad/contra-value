@@ -267,6 +267,100 @@ def populate_corpus_prototypes(
     return full_counts
 
 
+def calibrate_corpus_perplexity(
+    corpus_dir: str,
+    percentile: float = 0.95,
+) -> float:
+    """
+    Compute empirical percentile pseudo-perplexity across the committed corpus.
+
+    Determines the corpus_max_perplexity calibration ceiling used to normalise
+    λ_⊥ values. The 95th percentile is used rather than the maximum to avoid
+    outlier sensitivity (e.g., institutional names unknown to BETO that produce
+    anomalously high perplexity, not as a meaningful epistemic signal but due to
+    out-of-vocabulary collapse).
+
+    Current empirical anchor: 21.769 — the λ_⊥ of "poner a valer a través del
+    trabajo" (Speaker GR, automatic subject atom). This is codified as
+    CORPUS_MAX_PERPLEXITY_DEFAULT in sybyn/warg_ffi.py and is the operational
+    ceiling for Year 0. This function is provided for Year 1 recalibration once
+    the full anonymised corpus is available.
+
+    Parameters
+    ----------
+    corpus_dir : path to the INCEPTION project export root
+    percentile : percentile to use as ceiling (default 0.95)
+
+    Returns
+    -------
+    float — empirical percentile pseudo-perplexity across all annotated spans
+
+    Note
+    ----
+    Requires BETOWeightExtractor (torch + transformers) and the full anonymised
+    corpus. Implementation deferred to Year 1 — the anonymisation gap for
+    speakers other than GR blocks corpus-wide computation. Use
+    CORPUS_MAX_PERPLEXITY_DEFAULT = 21.769 (sybyn/warg_ffi.py) for prototype.
+    """
+    raise NotImplementedError(
+        "Corpus perplexity calibration deferred to Year 1. "
+        "Use CORPUS_MAX_PERPLEXITY_DEFAULT = 21.769 (sybyn/warg_ffi.py) for prototype. "
+        "Prerequisite: length-preserving anonymisation of all corpus XMI sofaStrings."
+    )
+
+
+# =============================================================================
+# Initial weight computation — τ-time, torch-free
+# =============================================================================
+
+def compute_initial_weight(logits: "Sequence[float]") -> float:
+    """
+    Direction-neutral NLI engagement score from raw logits at τ construction time.
+
+    Takes the 3-class NLI logits produced at τ transduction (before the full
+    VALUE_NET annotation pass) and returns max(p_E, p_C) — the same
+    direction-neutral formula as _nli_engagement, but operating on already-
+    computed logits rather than running the NLI model again.
+
+    This is Atom.initial_weight: a cheap provenance signal available immediately
+    after τ transduction, recording how strongly the NLI classifier engaged with
+    the span at the moment it was created. The full VALUE_NET score (Atom.weight)
+    is computed later by BETOWeightExtractor.annotate().
+
+    XNLI label order for Recognai/bert-base-spanish-wwm-cased-xnli:
+        index 0 = contradiction, index 1 = neutral, index 2 = entailment
+
+    Parameters
+    ----------
+    logits : sequence of 3 floats
+        Raw (pre-softmax) logits from the NLI model. Accepts any 3-element
+        Python sequence — torch tensor values should be converted to list via
+        .tolist() before passing. No torch dependency in this function.
+
+    Returns
+    -------
+    float
+        max(p_entailment, p_contradiction) after softmax. Range [0, 1].
+        Returns 1/3 when all logits are equal (uniform prior).
+
+    Design note
+    -----------
+    Using the same formula as _nli_engagement (max over E and C) preserves
+    direction-neutrality: an atom that strongly entails OR strongly contradicts
+    the paired hypothesis receives the same initial_weight. This is consistent
+    with the VALUE_NET architecture where audience determines direction and
+    weight measures intensity only.
+    """
+    # Pure-Python softmax to remain torch-free (torch values arrive as .tolist())
+    max_l = max(logits)                              # numerical stability
+    exps = [math.exp(x - max_l) for x in logits]
+    total = sum(exps)
+    probs = [e / total for e in exps]
+    p_contradiction = probs[0]
+    p_entailment    = probs[2]
+    return max(p_entailment, p_contradiction)
+
+
 # =============================================================================
 # Core computation functions
 # =============================================================================
