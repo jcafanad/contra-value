@@ -140,21 +140,41 @@ class Atom:
     R_in/R_out are populated in a second pass after all atoms are indexed.
     grounds/defeaters are populated by construct_attacks().
     weight/perplexity are populated by weight_extractor.py.
+
+    span_id: str
+        The XMI id of the originating InceptionSpan, assigned at construction
+        in tau_inception(). Format: the raw string value of the xmi:id attribute
+        (e.g. "42"). Preserved as a string to avoid silent int conversion of
+        non-numeric ids in future XMI variants. Used for provenance tracing and
+        for warg FFI round-trips where the original span boundary must be
+        recoverable without re-parsing the XMI.
+
+    initial_weight: float
+        Direction-neutral NLI engagement score at the moment of τ transduction,
+        before VALUE_NET traversal. Populated by compute_initial_weight() in
+        weight_extractor.py when logits from the NLI pass are available at
+        construction time. Semantics: max(p_E, p_C) over the (span_text,
+        claim_text) pair — the same direction-neutral formula as _nli_engagement,
+        but computed from already-available logits rather than a fresh NLI call.
+        Default 0.0 (not yet computed). Distinct from Atom.weight, which is the
+        full VALUE_NET engagement score computed in a later annotation pass.
     """
-    id:            int
-    claim:         str
-    span_indices:  Tuple[int, int]
-    L_dia:         Set[str]    = field(default_factory=set)
-    L_ont:         Set[str]    = field(default_factory=set)
-    L_val:         Set[str]    = field(default_factory=set)
-    R_in:          List[Relation] = field(default_factory=list)
-    R_out:         List[Relation] = field(default_factory=list)
-    speaker:       str         = ""
-    turn:          int         = 0
-    grounds:       Set["Atom"] = field(default_factory=set)
-    defeaters:     Set["Atom"] = field(default_factory=set)
-    weight:        float       = 0.0
-    perplexity:    float       = 0.0   # λ_⊥ coefficient (epistemic violence measure)
+    id:             int
+    claim:          str
+    span_indices:   Tuple[int, int]
+    L_dia:          Set[str]    = field(default_factory=set)
+    L_ont:          Set[str]    = field(default_factory=set)
+    L_val:          Set[str]    = field(default_factory=set)
+    R_in:           List[Relation] = field(default_factory=list)
+    R_out:          List[Relation] = field(default_factory=list)
+    speaker:        str         = ""
+    turn:           int         = 0
+    grounds:        Set["Atom"] = field(default_factory=set)
+    defeaters:      Set["Atom"] = field(default_factory=set)
+    weight:         float       = 0.0
+    perplexity:     float       = 0.0   # λ_⊥ coefficient (epistemic violence measure)
+    span_id:        str         = ""    # XMI id of originating InceptionSpan
+    initial_weight: float       = 0.0  # NLI engagement at τ construction time
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -267,6 +287,7 @@ def tau_inception(
         L_val=val,
         speaker=speaker,
         turn=turn,
+        span_id=span.xmi_id,   # provenance: XMI id of originating span
     )
 
 

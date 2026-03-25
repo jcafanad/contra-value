@@ -321,6 +321,85 @@ class TestTauInception:
         atom = tau_inception(span, self.TEXT, "Speaker GR", 1, 0)
         assert atom.span_indices == (20, 25)
 
+    def test_span_id_set_from_xmi_id(self):
+        """
+        tau_inception must copy InceptionSpan.xmi_id into Atom.span_id at
+        construction time — not after the fact.
+
+        Provenance requirement: warg FFI round-trips and cross-document
+        tracing require that the originating XMI id is available on the atom
+        without re-parsing the source XMI.
+        """
+        span = InceptionSpan(
+            xmi_id="99", begin=20, end=25,
+            value_labels=["value"],
+        )
+        atom = tau_inception(span, self.TEXT, "Speaker GR", 1, 0)
+        assert atom is not None
+        assert atom.span_id == "99"
+
+    def test_span_id_empty_string_when_xmi_id_empty(self):
+        """InceptionSpan with empty xmi_id → Atom.span_id == ''."""
+        span = InceptionSpan(
+            xmi_id="", begin=20, end=25,
+            value_labels=["value"],
+        )
+        atom = tau_inception(span, self.TEXT, "Speaker GR", 1, 0)
+        assert atom is not None
+        assert atom.span_id == ""
+
+    def test_initial_weight_default_zero(self):
+        """Atom.initial_weight defaults to 0.0 at construction; populated later."""
+        span = InceptionSpan(xmi_id="5", begin=20, end=25, value_labels=["value"])
+        atom = tau_inception(span, self.TEXT, "Speaker GR", 1, 0)
+        assert atom is not None
+        assert atom.initial_weight == 0.0
+
+
+# ---------------------------------------------------------------------------
+# TestAtomNewFields — span_id and initial_weight dataclass contract
+# ---------------------------------------------------------------------------
+
+class TestAtomNewFields:
+    """
+    Unit tests for the span_id and initial_weight fields added in Phase 1.
+
+    Structural contract:
+      - span_id is a str (not int), defaulting to "".
+      - initial_weight is a float, defaulting to 0.0.
+      - Neither field participates in __hash__ or __eq__ (those key on .id only).
+    """
+
+    def test_span_id_default_empty_string(self):
+        a = Atom(id=1, claim="texto", span_indices=(0, 5))
+        assert a.span_id == ""
+        assert isinstance(a.span_id, str)
+
+    def test_span_id_explicit_set(self):
+        a = Atom(id=1, claim="texto", span_indices=(0, 5), span_id="42")
+        assert a.span_id == "42"
+
+    def test_initial_weight_default_zero(self):
+        a = Atom(id=1, claim="texto", span_indices=(0, 5))
+        assert a.initial_weight == 0.0
+
+    def test_initial_weight_explicit_set(self):
+        a = Atom(id=1, claim="texto", span_indices=(0, 5), initial_weight=0.73)
+        assert abs(a.initial_weight - 0.73) < 1e-9
+
+    def test_span_id_not_in_equality(self):
+        """Two atoms with the same id but different span_ids must still be equal."""
+        a1 = Atom(id=5, claim="foo", span_indices=(0, 3), span_id="10")
+        a2 = Atom(id=5, claim="foo", span_indices=(0, 3), span_id="99")
+        assert a1 == a2
+        assert hash(a1) == hash(a2)
+
+    def test_initial_weight_mutable(self):
+        """initial_weight must be assignable after construction."""
+        a = Atom(id=1, claim="texto", span_indices=(0, 5))
+        a.initial_weight = 0.61
+        assert abs(a.initial_weight - 0.61) < 1e-9
+
 
 # ---------------------------------------------------------------------------
 # TestParseInceptionXmi — minimal synthetic XMI
